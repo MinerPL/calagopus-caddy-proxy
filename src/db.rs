@@ -11,7 +11,6 @@ pub struct Route {
     pub server_uuid: Uuid,
     pub kind: String,
     pub domain: String,
-    pub parent_domain: Option<String>,
     pub allowed_domain_uuid: Option<Uuid>,
     pub port: i32,
     pub record_type: Option<String>,
@@ -46,7 +45,6 @@ fn map_route(row: &sqlx::postgres::PgRow) -> Result<Route, sqlx::Error> {
         server_uuid: row.try_get("server_uuid")?,
         kind: row.try_get("kind")?,
         domain: row.try_get("domain")?,
-        parent_domain: row.try_get("parent_domain")?,
         allowed_domain_uuid: row.try_get("allowed_domain_uuid")?,
         port: row.try_get("port")?,
         record_type: row.try_get("record_type")?,
@@ -62,7 +60,7 @@ pub async fn routes_for_server(
     server_uuid: Uuid,
 ) -> Result<Vec<Route>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+        "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
          FROM dev_dawid_caddy_routes WHERE server_uuid = $1 ORDER BY created, uuid",
     )
@@ -79,7 +77,7 @@ pub async fn route_for_server(
     uuid: Uuid,
 ) -> Result<Option<Route>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+        "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
          FROM dev_dawid_caddy_routes WHERE server_uuid = $1 AND uuid = $2",
     )
@@ -205,7 +203,7 @@ pub async fn admin_routes(
     let offset = (page - 1) * per_page;
     let pattern = search.map(like_pattern);
     let rows = sqlx::query(
-        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+        "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created, \
          servers.name AS server_name, COUNT(*) OVER() AS total_count \
          FROM dev_dawid_caddy_routes \
@@ -240,7 +238,7 @@ pub async fn admin_routes(
 
 pub async fn route_by_uuid(pool: &PgPool, uuid: Uuid) -> Result<Option<Route>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+        "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
          FROM dev_dawid_caddy_routes WHERE uuid = $1",
     )
