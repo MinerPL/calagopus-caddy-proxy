@@ -12,7 +12,7 @@ function CardSummary() {
   return <Text size='sm'>Publish server domains through Caddy Docker Proxy, with Cloudflare DNS for allowed zones.</Text>;
 }
 
-class DawidCaddyExtension extends Extension {
+class CaddyProxyExtension extends Extension {
   public cardConfigurationPage: React.FC | null = ConfigurationPage;
   public cardComponent: React.FC | null = CardSummary;
   public cardIcon: React.ReactNode = <FontAwesomeIcon icon={faGlobe} />;
@@ -60,4 +60,4 @@ class DawidCaddyExtension extends Extension {
   }
 }
 
-export default new DawidCaddyExtension();
+export default new CaddyProxyExtension();

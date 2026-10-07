@@ -426,10 +426,16 @@ mod routes_delete {
 
 pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
-        .routes(routes!(get::route))
-        .routes(routes!(put::route))
+        .nest("/settings", settings_router(state))
         .nest("/domains/test", test_router(state))
         .nest("/routes", routes_router(state))
+        .with_state(state.clone())
+}
+
+fn settings_router(state: &State) -> OpenApiRouter<State> {
+    OpenApiRouter::new()
+        .routes(routes!(get::route))
+        .routes(routes!(put::route))
         .with_state(state.clone())
 }
 

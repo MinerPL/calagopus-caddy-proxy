@@ -140,13 +140,13 @@ export const deleteCaddyRoute = async (serverUuid: string, routeUuid: string): P
 };
 
 export const getSettings = async (): Promise<CaddySettings> => {
-  const { data } = await axiosInstance.get('/api/admin/extensions/dev.dawid.caddy/settings');
+  const { data } = await axiosInstance.get('/api/admin/extensions/dev.minerpl.caddyproxy/settings');
   return parseFromApi(settingsSchema, data);
 };
 
 export const updateSettings = async (body: z.infer<typeof settingsWriteSchema>): Promise<CaddySettings> => {
   const { data } = await axiosInstance.put(
-    '/api/admin/extensions/dev.dawid.caddy/settings',
+    '/api/admin/extensions/dev.minerpl.caddyproxy/settings',
     serializeForApi(settingsWriteSchema, body),
   );
   return parseFromApi(settingsSchema, data);
@@ -154,19 +154,19 @@ export const updateSettings = async (body: z.infer<typeof settingsWriteSchema>):
 
 export const testCloudflare = async (body: z.infer<typeof testSchema>): Promise<string> => {
   const { data } = await axiosInstance.post(
-    '/api/admin/extensions/dev.dawid.caddy/domains/test',
+    '/api/admin/extensions/dev.minerpl.caddyproxy/domains/test',
     serializeForApi(testSchema, body),
   );
   return parseFromApi(testResponseSchema, data).zoneName;
 };
 
 export const getAdminRoutes = async (page: number, search: string) => {
-  const { data } = await axiosInstance.get('/api/admin/extensions/dev.dawid.caddy/routes', {
+  const { data } = await axiosInstance.get('/api/admin/extensions/dev.minerpl.caddyproxy/routes', {
     params: { page, per_page: 25, search: search || undefined },
   });
   return parsePaginationFromApi(adminRouteSchema, data);
 };
 
 export const deleteAdminRoute = async (routeUuid: string): Promise<void> => {
-  await axiosInstance.delete(`/api/admin/extensions/dev.dawid.caddy/routes/${routeUuid}`);
+  await axiosInstance.delete(`/api/admin/extensions/dev.minerpl.caddyproxy/routes/${routeUuid}`);
 };

@@ -1,6 +1,6 @@
 # Caddy
 
-Calagopus Panel extension (`dev.dawid.caddy`) that publishes a server through [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy).
+Calagopus Panel extension (`dev.minerpl.caddyproxy`) that publishes a server through [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy).
 
 A server owner opens the **Caddy** tab and adds either a subdomain of a domain an admin allowed, or a custom domain they already control. Allowed domains carry a public DNS record (an **A** address or a **CNAME** hostname). When Cloudflare is turned on for that domain, creating the subdomain writes the DNS record, and deleting the server deletes it.
 
@@ -19,18 +19,20 @@ Requires Calagopus Panel `>=1.2.3`.
 
 This directory is the extension. It is not a standalone app.
 
-On a Panel checkout, put it at `backend-extensions/dev_dawid_caddy` (a symlink is enough) and apply it:
+On a Panel checkout, put it at `backend-extensions/dev_minerpl_caddyproxy` (a symlink is enough) and apply it:
 
 ```bash
 panel-rs extensions apply --profile balanced
 ```
 
-On the `:heavy` image, upload `exported-extensions/dev_dawid_caddy.c7s.zip` from this repo (Admin → Extensions, or copy it into `./build/extensions` and restart). That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install.
+On the `:heavy` image, upload `exported-extensions/dev_minerpl_caddyproxy.c7s.zip` from this repo (Admin → Extensions, or copy it into `./build/extensions` and restart). That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install.
+
+This package replaces `dev.dawid.caddy`. Delete that older archive from `./build/extensions` before adding this one. Two archives for different package names compile as two extensions, and a second archive of the same package fails the build as already installed. If the old extension already ran, its tables (`dev_dawid_caddy_routes`, `dev_dawid_caddy_cleanup`) are left behind; this package uses its own tables. The `servers.caddy_domains` column is shared and is added only when it is missing.
 
 To rebuild the archive from a Panel checkout instead:
 
 ```bash
-panel-rs extensions export dev.dawid.caddy
+panel-rs extensions export dev.minerpl.caddyproxy
 ```
 
 ## Admin setup
@@ -66,5 +68,5 @@ cargo test --manifest-path checks/Cargo.toml
 Inside a Panel checkout, the same tests run with the extension:
 
 ```bash
-cargo test -p dev_dawid_caddy
+cargo test -p dev_minerpl_caddyproxy
 ```

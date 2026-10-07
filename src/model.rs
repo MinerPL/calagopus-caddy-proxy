@@ -27,7 +27,7 @@ impl SafeModelExtension for ServerExtension {
 
 impl ModelExtension for ServerExtension {
     fn extension_name(&self) -> &'static str {
-        "dev.dawid.caddy"
+        "dev.minerpl.caddyproxy"
     }
 
     fn extended_columns(&self, prefix: &str) -> BTreeMap<&'static str, compact_str::CompactString> {

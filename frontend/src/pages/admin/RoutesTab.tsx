@@ -26,7 +26,7 @@ export default function RoutesTab() {
   const [pending, setPending] = useState<AdminCaddyRoute | null>(null);
 
   const { data, loading, error, search, setSearch, setPage, refetch } = useSearchablePaginatedTable({
-    queryKey: ['extensions', 'dev.dawid.caddy', 'admin', 'routes'],
+    queryKey: ['extensions', 'dev.minerpl.caddyproxy', 'admin', 'routes'],
     fetcher: (page, search) => getAdminRoutes(page, search),
     modifyParams: false,
   });

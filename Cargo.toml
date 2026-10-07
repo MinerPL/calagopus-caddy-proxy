@@ -1,5 +1,5 @@
 [package]
-name = "dev_dawid_caddy"
+name = "dev_minerpl_caddyproxy"
 description = "Caddy tab for server domains, Cloudflare DNS and caddy-docker-proxy labels."
 authors = ["Dawid"]
 version = "1.0.0"

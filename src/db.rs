@@ -62,7 +62,7 @@ pub async fn routes_for_server(
     let rows = sqlx::query(
         "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
-         FROM dev_dawid_caddy_routes WHERE server_uuid = $1 ORDER BY created, uuid",
+         FROM dev_minerpl_caddyproxy_routes WHERE server_uuid = $1 ORDER BY created, uuid",
     )
     .bind(server_uuid)
     .fetch_all(pool)
@@ -79,7 +79,7 @@ pub async fn route_for_server(
     let row = sqlx::query(
         "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
-         FROM dev_dawid_caddy_routes WHERE server_uuid = $1 AND uuid = $2",
+         FROM dev_minerpl_caddyproxy_routes WHERE server_uuid = $1 AND uuid = $2",
     )
     .bind(server_uuid)
     .bind(uuid)
@@ -91,7 +91,7 @@ pub async fn route_for_server(
 
 pub async fn count_for_server(pool: &PgPool, server_uuid: Uuid) -> Result<i64, sqlx::Error> {
     let row =
-        sqlx::query("SELECT COUNT(*) AS count FROM dev_dawid_caddy_routes WHERE server_uuid = $1")
+        sqlx::query("SELECT COUNT(*) AS count FROM dev_minerpl_caddyproxy_routes WHERE server_uuid = $1")
             .bind(server_uuid)
             .fetch_one(pool)
             .await?;
@@ -103,7 +103,7 @@ pub async fn count_for_allowed_domain(
     allowed_domain_uuid: Uuid,
 ) -> Result<i64, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT COUNT(*) AS count FROM dev_dawid_caddy_routes WHERE allowed_domain_uuid = $1",
+        "SELECT COUNT(*) AS count FROM dev_minerpl_caddyproxy_routes WHERE allowed_domain_uuid = $1",
     )
     .bind(allowed_domain_uuid)
     .fetch_one(pool)
@@ -113,7 +113,7 @@ pub async fn count_for_allowed_domain(
 
 pub async fn domain_taken(pool: &PgPool, domain: &str) -> Result<bool, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT EXISTS(SELECT 1 FROM dev_dawid_caddy_routes WHERE domain = $1) AS taken",
+        "SELECT EXISTS(SELECT 1 FROM dev_minerpl_caddyproxy_routes WHERE domain = $1) AS taken",
     )
     .bind(domain)
     .fetch_one(pool)
@@ -137,7 +137,7 @@ pub struct NewRoute<'a> {
 pub async fn insert_route(pool: &PgPool, route: NewRoute<'_>) -> Result<Uuid, anyhow::Error> {
     let result = sqlx::query(
         r#"
-        INSERT INTO dev_dawid_caddy_routes (
+        INSERT INTO dev_minerpl_caddyproxy_routes (
             server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port,
             record_type, record_content, cloudflare_zone_id, cloudflare_record_id
         )
@@ -166,7 +166,7 @@ pub async fn insert_route(pool: &PgPool, route: NewRoute<'_>) -> Result<Uuid, an
 }
 
 pub async fn update_port(pool: &PgPool, uuid: Uuid, port: i32) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE dev_dawid_caddy_routes SET port = $2 WHERE uuid = $1")
+    sqlx::query("UPDATE dev_minerpl_caddyproxy_routes SET port = $2 WHERE uuid = $1")
         .bind(uuid)
         .bind(port)
         .execute(pool)
@@ -175,7 +175,7 @@ pub async fn update_port(pool: &PgPool, uuid: Uuid, port: i32) -> Result<(), sql
 }
 
 pub async fn delete_route(pool: &PgPool, uuid: Uuid) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM dev_dawid_caddy_routes WHERE uuid = $1")
+    sqlx::query("DELETE FROM dev_minerpl_caddyproxy_routes WHERE uuid = $1")
         .bind(uuid)
         .execute(pool)
         .await?;
@@ -206,10 +206,10 @@ pub async fn admin_routes(
         "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created, \
          servers.name AS server_name, COUNT(*) OVER() AS total_count \
-         FROM dev_dawid_caddy_routes \
-         JOIN servers ON servers.uuid = dev_dawid_caddy_routes.server_uuid \
-         WHERE ($1::text IS NULL OR dev_dawid_caddy_routes.domain ILIKE $1 ESCAPE '\\') \
-         ORDER BY dev_dawid_caddy_routes.created DESC \
+         FROM dev_minerpl_caddyproxy_routes \
+         JOIN servers ON servers.uuid = dev_minerpl_caddyproxy_routes.server_uuid \
+         WHERE ($1::text IS NULL OR dev_minerpl_caddyproxy_routes.domain ILIKE $1 ESCAPE '\\') \
+         ORDER BY dev_minerpl_caddyproxy_routes.created DESC \
          LIMIT $2 OFFSET $3",
     )
     .bind(pattern)
@@ -240,7 +240,7 @@ pub async fn route_by_uuid(pool: &PgPool, uuid: Uuid) -> Result<Option<Route>, s
     let row = sqlx::query(
         "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
          record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
-         FROM dev_dawid_caddy_routes WHERE uuid = $1",
+         FROM dev_minerpl_caddyproxy_routes WHERE uuid = $1",
     )
     .bind(uuid)
     .fetch_optional(pool)
@@ -256,7 +256,7 @@ pub async fn insert_cleanup(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO dev_dawid_caddy_cleanup (zone_id, record_id, token_encrypted)
+        INSERT INTO dev_minerpl_caddyproxy_cleanup (zone_id, record_id, token_encrypted)
         VALUES ($1, $2, $3)
         "#,
     )
@@ -272,7 +272,7 @@ pub async fn due_cleanup(pool: &PgPool) -> Result<Vec<CleanupTask>, sqlx::Error>
     let rows = sqlx::query(
         r#"
         SELECT uuid, zone_id, record_id, token_encrypted, attempts
-        FROM dev_dawid_caddy_cleanup
+        FROM dev_minerpl_caddyproxy_cleanup
         WHERE next_attempt <= now()
         ORDER BY next_attempt
         LIMIT 20
@@ -295,7 +295,7 @@ pub async fn due_cleanup(pool: &PgPool) -> Result<Vec<CleanupTask>, sqlx::Error>
 }
 
 pub async fn delete_cleanup(pool: &PgPool, uuid: Uuid) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM dev_dawid_caddy_cleanup WHERE uuid = $1")
+    sqlx::query("DELETE FROM dev_minerpl_caddyproxy_cleanup WHERE uuid = $1")
         .bind(uuid)
         .execute(pool)
         .await?;
@@ -311,7 +311,7 @@ pub async fn postpone_cleanup(
     let minutes = i32::try_from((2_i64).pow(attempts.clamp(0, 8) as u32).min(360)).unwrap_or(360);
     sqlx::query(
         r#"
-        UPDATE dev_dawid_caddy_cleanup
+        UPDATE dev_minerpl_caddyproxy_cleanup
         SET attempts = $2, last_error = $3, next_attempt = now() + make_interval(mins => $4)
         WHERE uuid = $1
         "#,
@@ -326,7 +326,7 @@ pub async fn postpone_cleanup(
 }
 
 pub async fn pending_cleanup(pool: &PgPool) -> Result<i64, sqlx::Error> {
-    let row = sqlx::query("SELECT COUNT(*) AS count FROM dev_dawid_caddy_cleanup")
+    let row = sqlx::query("SELECT COUNT(*) AS count FROM dev_minerpl_caddyproxy_cleanup")
         .fetch_one(pool)
         .await?;
     row.try_get("count")

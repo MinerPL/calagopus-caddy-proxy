@@ -21,7 +21,7 @@ import RouteModal from './RouteModal.tsx';
 import RouteRow from './RouteRow.tsx';
 
 export const serverCaddyQueryKey = (serverUuid: string) =>
-  ['extensions', 'dev.dawid.caddy', 'server', serverUuid] as const;
+  ['extensions', 'dev.minerpl.caddyproxy', 'server', serverUuid] as const;
 
 export default function CaddyPage() {
   const { t: tExt } = useExtTranslations();

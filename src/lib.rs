@@ -99,7 +99,7 @@ impl Extension for ExtensionStruct {
     ) -> ExtensionRouteBuilder {
         builder
             .add_admin_api_router(|router| {
-                router.nest("/extensions/dev.dawid.caddy", routes::admin::router(&state))
+                router.nest("/extensions/dev.minerpl.caddyproxy", routes::admin::router(&state))
             })
             .add_client_server_api_router(|router| {
                 router.nest("/caddy", routes::server::router(&state))
@@ -112,7 +112,7 @@ impl Extension for ExtensionStruct {
         builder: BackgroundTaskBuilder,
     ) -> BackgroundTaskBuilder {
         builder
-            .add_task("dev-dawid-caddy-dns-cleanup", |state| async move {
+            .add_task("dev-minerpl-caddyproxy-dns-cleanup", |state| async move {
                 cleanup::run(&state).await
             })
             .await;

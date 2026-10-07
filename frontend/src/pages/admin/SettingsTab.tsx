@@ -20,7 +20,7 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { type DomainDraft, getSettings, testCloudflare, updateSettings } from '../../api.ts';
 import { useExtTranslations } from '../../translations.ts';
 
-export const adminSettingsQueryKey = ['extensions', 'dev.dawid.caddy', 'admin', 'settings'] as const;
+export const adminSettingsQueryKey = ['extensions', 'dev.minerpl.caddyproxy', 'admin', 'settings'] as const;
 
 function blankDomain(): DomainDraft {
   return {
