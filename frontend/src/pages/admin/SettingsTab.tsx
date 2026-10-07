@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
+import Table, { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
@@ -13,6 +14,7 @@ import Select from '@/elements/input/Select.tsx';
 import Switch from '@/elements/input/Switch.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
+import SegmentedControl from '@/elements/layout/SegmentedControl.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
@@ -98,6 +100,10 @@ export default function SettingsTab() {
 
   const patch = (uuid: string, next: Partial<DomainDraft>) => {
     setDomains((current) => current.map((domain) => (domain.uuid === uuid ? { ...domain, ...next } : domain)));
+  };
+
+  const patchPoint = (nodeUuid: string, next: Partial<NodePointDraft>) => {
+    setNodePoints((current) => current.map((point) => (point.nodeUuid === nodeUuid ? { ...point, ...next } : point)));
   };
 
   const limit = typeof defaultLimit === 'number' ? defaultLimit : Number(defaultLimit);
@@ -187,54 +193,54 @@ export default function SettingsTab() {
         </Stack>
       </TitleCard>
 
-      <TitleCard title={tExt('pages.admin.settings.nodePointsTitle', {})}>
-        <Stack gap='md'>
-          <Text size='sm' c='dimmed'>
-            {tExt('pages.admin.settings.nodePointsDescription', {})}
-          </Text>
-          {nodePoints.length === 0 && <Alert color='blue'>{tExt('pages.admin.settings.nodePointsEmpty', {})}</Alert>}
-          {nodePoints.map((point) => (
-            <SimpleGrid key={point.nodeUuid} cols={{ base: 1, sm: 3 }}>
-              <TextInput label={tExt('pages.admin.settings.nodeName', {})} value={point.name} readOnly disabled />
-              <Select
-                label={tExt('pages.admin.settings.recordType', {})}
-                data={[
-                  { value: 'A', label: 'A' },
-                  { value: 'CNAME', label: 'CNAME' },
-                ]}
-                value={point.recordType}
-                onChange={(value) =>
-                  value &&
-                  setNodePoints((current) =>
-                    current.map((item) =>
-                      item.nodeUuid === point.nodeUuid ? { ...item, recordType: value as 'A' | 'CNAME' } : item,
-                    ),
-                  )
-                }
-                allowDeselect={false}
-                disabled={!canManage}
-              />
-              <TextInput
-                label={tExt('pages.admin.settings.recordContent', {})}
-                description={
-                  point.recordType === 'A'
-                    ? tExt('pages.admin.settings.recordContentA', {})
-                    : tExt('pages.admin.settings.recordContentCname', {})
-                }
-                placeholder={point.recordType === 'A' ? '203.0.113.10' : 'edge.example.net'}
-                value={point.recordContent}
-                onChange={(e) =>
-                  setNodePoints((current) =>
-                    current.map((item) =>
-                      item.nodeUuid === point.nodeUuid ? { ...item, recordContent: e.target.value } : item,
-                    ),
-                  )
-                }
-                disabled={!canManage}
-              />
-            </SimpleGrid>
-          ))}
-        </Stack>
+      <TitleCard title={tExt('pages.admin.settings.nodePointsTitle', {})} wrapperClassName='p-0!'>
+        <Text size='sm' c='dimmed' px='md' py='sm'>
+          {tExt('pages.admin.settings.nodePointsDescription', {})}
+        </Text>
+        {nodePoints.length === 0 ? (
+          <Alert color='blue' mx='md' mb='md'>
+            {tExt('pages.admin.settings.nodePointsEmpty', {})}
+          </Alert>
+        ) : (
+          <Table
+            flush
+            verticalSpacing='xs'
+            columns={[
+              tExt('pages.admin.settings.nodeName', {}),
+              tExt('pages.admin.settings.recordType', {}),
+              tExt('pages.admin.settings.recordContent', {}),
+            ]}
+          >
+            {nodePoints.map((point) => (
+              <TableRow key={point.nodeUuid}>
+                <TableData style={{ verticalAlign: 'middle' }}>
+                  <Text fw={500}>{point.name}</Text>
+                </TableData>
+                <TableData w={150} style={{ verticalAlign: 'middle' }}>
+                  <SegmentedControl
+                    size='xs'
+                    fullWidth
+                    disabled={!canManage}
+                    data={[
+                      { value: 'A', label: 'A' },
+                      { value: 'CNAME', label: 'CNAME' },
+                    ]}
+                    value={point.recordType}
+                    onChange={(value) => patchPoint(point.nodeUuid, { recordType: value as 'A' | 'CNAME' })}
+                  />
+                </TableData>
+                <TableData style={{ verticalAlign: 'middle', width: '55%' }}>
+                  <TextInput
+                    placeholder={point.recordType === 'A' ? '203.0.113.10' : 'edge.example.net'}
+                    value={point.recordContent}
+                    onChange={(e) => patchPoint(point.nodeUuid, { recordContent: e.target.value })}
+                    disabled={!canManage}
+                  />
+                </TableData>
+              </TableRow>
+            ))}
+          </Table>
+        )}
       </TitleCard>
 
       {domains.length === 0 && <Alert color='blue'>{tExt('pages.admin.settings.empty', {})}</Alert>}

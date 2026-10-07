@@ -88,8 +88,7 @@ const translations = defineTranslations({
           recordContentCname: 'Hostname the subdomain should follow',
           recordContentFallback: 'Used when the server’s node has no point of its own.',
           nodePointsTitle: 'Node points',
-          nodePointsDescription:
-            'A subdomain points at the record of the node its server runs on. Leave a node blank to use the point on the allowed domain. Everything stays on this page.',
+          nodePointsDescription: 'Subdomains on a node resolve here. Leave a row blank to use that domain’s point.',
           nodePointsEmpty: 'This panel has no nodes yet.',
           nodeName: 'Node',
           cloudflare: 'Create records in Cloudflare',
