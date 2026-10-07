@@ -57,18 +57,15 @@ fn map_route(row: &sqlx::postgres::PgRow) -> Result<Route, sqlx::Error> {
     })
 }
 
-const ROUTE_COLUMNS: &str = r#"
-    uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port,
-    record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created
-"#;
-
 pub async fn routes_for_server(
     pool: &PgPool,
     server_uuid: Uuid,
 ) -> Result<Vec<Route>, sqlx::Error> {
-    let rows = sqlx::query(&format!(
-        "SELECT {ROUTE_COLUMNS} FROM dev_dawid_caddy_routes WHERE server_uuid = $1 ORDER BY created, uuid"
-    ))
+    let rows = sqlx::query(
+        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+         record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
+         FROM dev_dawid_caddy_routes WHERE server_uuid = $1 ORDER BY created, uuid",
+    )
     .bind(server_uuid)
     .fetch_all(pool)
     .await?;
@@ -81,9 +78,11 @@ pub async fn route_for_server(
     server_uuid: Uuid,
     uuid: Uuid,
 ) -> Result<Option<Route>, sqlx::Error> {
-    let row = sqlx::query(&format!(
-        "SELECT {ROUTE_COLUMNS} FROM dev_dawid_caddy_routes WHERE server_uuid = $1 AND uuid = $2"
-    ))
+    let row = sqlx::query(
+        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+         record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
+         FROM dev_dawid_caddy_routes WHERE server_uuid = $1 AND uuid = $2",
+    )
     .bind(server_uuid)
     .bind(uuid)
     .fetch_optional(pool)
@@ -205,16 +204,16 @@ pub async fn admin_routes(
 ) -> Result<(i64, Vec<AdminRoute>), sqlx::Error> {
     let offset = (page - 1) * per_page;
     let pattern = search.map(like_pattern);
-    let rows = sqlx::query(&format!(
-        r#"
-        SELECT {ROUTE_COLUMNS}, servers.name AS server_name, COUNT(*) OVER() AS total_count
-        FROM dev_dawid_caddy_routes
-        JOIN servers ON servers.uuid = dev_dawid_caddy_routes.server_uuid
-        WHERE ($1::text IS NULL OR dev_dawid_caddy_routes.domain ILIKE $1 ESCAPE '\')
-        ORDER BY dev_dawid_caddy_routes.created DESC
-        LIMIT $2 OFFSET $3
-        "#
-    ))
+    let rows = sqlx::query(
+        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+         record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created, \
+         servers.name AS server_name, COUNT(*) OVER() AS total_count \
+         FROM dev_dawid_caddy_routes \
+         JOIN servers ON servers.uuid = dev_dawid_caddy_routes.server_uuid \
+         WHERE ($1::text IS NULL OR dev_dawid_caddy_routes.domain ILIKE $1 ESCAPE '\\') \
+         ORDER BY dev_dawid_caddy_routes.created DESC \
+         LIMIT $2 OFFSET $3",
+    )
     .bind(pattern)
     .bind(per_page)
     .bind(offset)
@@ -240,9 +239,11 @@ pub async fn admin_routes(
 }
 
 pub async fn route_by_uuid(pool: &PgPool, uuid: Uuid) -> Result<Option<Route>, sqlx::Error> {
-    let row = sqlx::query(&format!(
-        "SELECT {ROUTE_COLUMNS} FROM dev_dawid_caddy_routes WHERE uuid = $1"
-    ))
+    let row = sqlx::query(
+        "SELECT uuid, server_uuid, kind, domain, parent_domain, allowed_domain_uuid, port, \
+         record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created \
+         FROM dev_dawid_caddy_routes WHERE uuid = $1",
+    )
     .bind(uuid)
     .fetch_optional(pool)
     .await?;

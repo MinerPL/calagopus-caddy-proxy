@@ -2,7 +2,9 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use shared::{
     database::DatabaseError,
-    models::{server::Server, ModelExtension, ModelExtensionMapType, SafeModelExtension},
+    models::{
+        server::Server, BaseModel, ModelExtension, ModelExtensionMapType, SafeModelExtension,
+    },
 };
 use sqlx::{postgres::PgRow, Row};
 use std::collections::BTreeMap;
