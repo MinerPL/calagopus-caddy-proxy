@@ -25,13 +25,13 @@ On a Panel checkout, put it at `backend-extensions/dev_dawid_caddy` (a symlink i
 panel-rs extensions apply --profile balanced
 ```
 
-On the `:heavy` image, export a `.c7s.zip` from a checkout that already contains the extension and upload that archive:
+On the `:heavy` image, upload `exported-extensions/dev_dawid_caddy.c7s.zip` from this repo (Admin → Extensions, or copy it into `./build/extensions` and restart). That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install.
+
+To rebuild the archive from a Panel checkout instead:
 
 ```bash
 panel-rs extensions export dev.dawid.caddy
 ```
-
-The archive is written to `./exported-extensions/dev_dawid_caddy.c7s.zip`.
 
 ## Admin setup
 
