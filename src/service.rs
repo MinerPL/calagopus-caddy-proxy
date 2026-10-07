@@ -68,6 +68,7 @@ pub struct CreatedRoute {
 pub async fn create_subdomain(
     state: &State,
     server: &Server,
+    settings: &ExtensionSettingsData,
     allowed: &AllowedDomain,
     name: &str,
     port: u16,
@@ -80,8 +81,9 @@ pub async fn create_subdomain(
         return Err(invalid("that domain is already in use"));
     }
 
-    let (record_type, record_content) =
-        domain::normalize_record(&allowed.record_type, &allowed.record_content).map_err(invalid)?;
+    let (record_type, record_content) = settings
+        .record_for(allowed, server.node.uuid)
+        .map_err(invalid)?;
     if record_type == "CNAME" && record_content == fqdn {
         return Err(invalid("a cname record cannot point at itself"));
     }

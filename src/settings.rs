@@ -1,3 +1,4 @@
+use crate::domain;
 use serde::{Deserialize, Serialize};
 use shared::extensions::settings::{
     ExtensionSettings, SettingsDeserializeExt, SettingsDeserializer, SettingsSerializeExt,
@@ -21,11 +22,22 @@ pub struct AllowedDomain {
     pub cloudflare_proxied: bool,
 }
 
+/// Public DNS target for every subdomain created on servers that run on this node.
+#[derive(ToSchema, Serialize, Deserialize, Clone, Debug)]
+pub struct NodePoint {
+    pub node_uuid: Uuid,
+    pub record_type: String,
+    pub record_content: String,
+}
+
 #[derive(ToSchema, Serialize, Deserialize, Clone, Debug)]
 pub struct ExtensionSettingsData {
     pub allow_custom_domains: bool,
     pub default_limit: i32,
     pub domains: Vec<AllowedDomain>,
+    /// Missing on settings saved before node points existed.
+    #[serde(default)]
+    pub node_points: Vec<NodePoint>,
 }
 
 impl Default for ExtensionSettingsData {
@@ -34,6 +46,7 @@ impl Default for ExtensionSettingsData {
             allow_custom_domains: true,
             default_limit: 1,
             domains: Vec::new(),
+            node_points: Vec::new(),
         }
     }
 }
@@ -41,6 +54,22 @@ impl Default for ExtensionSettingsData {
 impl ExtensionSettingsData {
     pub fn domain(&self, uuid: Uuid) -> Option<&AllowedDomain> {
         self.domains.iter().find(|domain| domain.uuid == uuid)
+    }
+
+    /// The node's own point when one is saved, otherwise the domain's point.
+    pub fn record_for(
+        &self,
+        domain: &AllowedDomain,
+        node_uuid: Uuid,
+    ) -> Result<(String, String), String> {
+        match self
+            .node_points
+            .iter()
+            .find(|point| point.node_uuid == node_uuid)
+        {
+            Some(point) => domain::normalize_record(&point.record_type, &point.record_content),
+            None => domain::normalize_record(&domain.record_type, &domain.record_content),
+        }
     }
 }
 

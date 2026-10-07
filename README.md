@@ -27,6 +27,10 @@ panel-rs extensions apply --profile balanced
 
 On the `:heavy` image, upload `exported-extensions/dev_minerpl_caddyproxy.c7s.zip` from this repo (Admin → Extensions, or copy it into `./build/extensions` and restart). That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install.
 
+## Updating
+
+Replace the existing `dev_minerpl_caddyproxy.c7s.zip` in `./build/extensions` and rebuild. This is the same extension, so saved settings and existing domains stay. Do not add it as a second package, and do not leave two archives with that package name in the folder.
+
 This package replaces `dev.dawid.caddy`. Delete that older archive from `./build/extensions` before adding this one. Two archives for different package names compile as two extensions, and a second archive of the same package fails the build as already installed. If the old extension already ran, its tables (`dev_dawid_caddy_routes`, `dev_dawid_caddy_cleanup`) are left behind; this package uses its own tables. The `servers.caddy_domains` column is shared and is added only when it is missing.
 
 To rebuild the archive from a Panel checkout instead:
@@ -40,10 +44,11 @@ panel-rs extensions export dev.minerpl.caddyproxy
 Open the extension configuration page.
 
 1. Add each domain users may create subdomains under.
-2. Set the public record: **A** and the Caddy host's IPv4 address, or **CNAME** and a hostname.
-3. Optional: enable Cloudflare, paste the zone id and an API token with **Zone.DNS:Edit**, then test it. Proxied (orange-cloud) defaults to off so visitors reach Caddy directly.
-4. Custom domains are on by default. They only add labels. DNS stays with the user, and a name under an allowed domain has to be created as a subdomain.
-5. New servers start with a domain limit of 1. Change the default here, or set **Caddy domains** on a server (0 disables the tab's create button).
+2. Set the public record: **A** and an IPv4 address, or **CNAME** and a hostname. This is the fallback.
+3. Under **Node points**, set the address for each node. A subdomain uses the point of the node its server runs on. A blank node uses the domain's fallback. These stay on this page, not in the panel's node form.
+4. Optional: enable Cloudflare, paste the zone id and an API token with **Zone.DNS:Edit**, then test it. Proxied (orange-cloud) defaults to off so visitors reach Caddy directly.
+5. Custom domains are on by default. They only add labels. DNS stays with the user, and a name under an allowed domain has to be created as a subdomain.
+6. New servers start with a domain limit of 1. Change the default here, or set **Caddy domains** on a server (0 disables the tab's create button).
 
 A saved public record is copied onto each subdomain when it is created. Editing the record later does not rewrite DNS that already exists. Remove the subdomain and add it again to point it somewhere else. An allowed domain that still has subdomains cannot be removed or renamed.
 

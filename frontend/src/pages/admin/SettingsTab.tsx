@@ -17,7 +17,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
-import { type DomainDraft, getSettings, testCloudflare, updateSettings } from '../../api.ts';
+import { type DomainDraft, getSettings, type NodePointDraft, testCloudflare, updateSettings } from '../../api.ts';
 import { useExtTranslations } from '../../translations.ts';
 
 export const adminSettingsQueryKey = ['extensions', 'dev.minerpl.caddyproxy', 'admin', 'settings'] as const;
@@ -50,6 +50,7 @@ export default function SettingsTab() {
   const [allowCustomDomains, setAllowCustomDomains] = useState(true);
   const [defaultLimit, setDefaultLimit] = useState<number | string>(1);
   const [domains, setDomains] = useState<DomainDraft[]>([]);
+  const [nodePoints, setNodePoints] = useState<NodePointDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
 
@@ -69,6 +70,17 @@ export default function SettingsTab() {
         cloudflareProxied: domain.cloudflareProxied,
         cloudflareTokenSet: domain.cloudflareTokenSet,
       })),
+    );
+    setNodePoints(
+      data.nodes.map((node) => {
+        const saved = data.nodePoints.find((point) => point.nodeUuid === node.uuid);
+        return {
+          nodeUuid: node.uuid,
+          name: node.name,
+          recordType: saved?.recordType ?? 'A',
+          recordContent: saved?.recordContent ?? '',
+        };
+      }),
     );
   }, [data]);
 
@@ -111,6 +123,13 @@ export default function SettingsTab() {
           cloudflareApiToken: domain.cloudflareApiToken.trim() || undefined,
           cloudflareProxied: domain.cloudflareProxied,
         })),
+        nodePoints: nodePoints
+          .filter((point) => point.recordContent.trim())
+          .map((point) => ({
+            nodeUuid: point.nodeUuid,
+            recordType: point.recordType,
+            recordContent: point.recordContent.trim(),
+          })),
       });
       addToast(tExt('pages.admin.settings.saved', {}), 'success');
       queryClient.invalidateQueries({ queryKey: adminSettingsQueryKey });
@@ -168,6 +187,56 @@ export default function SettingsTab() {
         </Stack>
       </TitleCard>
 
+      <TitleCard title={tExt('pages.admin.settings.nodePointsTitle', {})}>
+        <Stack gap='md'>
+          <Text size='sm' c='dimmed'>
+            {tExt('pages.admin.settings.nodePointsDescription', {})}
+          </Text>
+          {nodePoints.length === 0 && <Alert color='blue'>{tExt('pages.admin.settings.nodePointsEmpty', {})}</Alert>}
+          {nodePoints.map((point) => (
+            <SimpleGrid key={point.nodeUuid} cols={{ base: 1, sm: 3 }}>
+              <TextInput label={tExt('pages.admin.settings.nodeName', {})} value={point.name} readOnly disabled />
+              <Select
+                label={tExt('pages.admin.settings.recordType', {})}
+                data={[
+                  { value: 'A', label: 'A' },
+                  { value: 'CNAME', label: 'CNAME' },
+                ]}
+                value={point.recordType}
+                onChange={(value) =>
+                  value &&
+                  setNodePoints((current) =>
+                    current.map((item) =>
+                      item.nodeUuid === point.nodeUuid ? { ...item, recordType: value as 'A' | 'CNAME' } : item,
+                    ),
+                  )
+                }
+                allowDeselect={false}
+                disabled={!canManage}
+              />
+              <TextInput
+                label={tExt('pages.admin.settings.recordContent', {})}
+                description={
+                  point.recordType === 'A'
+                    ? tExt('pages.admin.settings.recordContentA', {})
+                    : tExt('pages.admin.settings.recordContentCname', {})
+                }
+                placeholder={point.recordType === 'A' ? '203.0.113.10' : 'edge.example.net'}
+                value={point.recordContent}
+                onChange={(e) =>
+                  setNodePoints((current) =>
+                    current.map((item) =>
+                      item.nodeUuid === point.nodeUuid ? { ...item, recordContent: e.target.value } : item,
+                    ),
+                  )
+                }
+                disabled={!canManage}
+              />
+            </SimpleGrid>
+          ))}
+        </Stack>
+      </TitleCard>
+
       {domains.length === 0 && <Alert color='blue'>{tExt('pages.admin.settings.empty', {})}</Alert>}
 
       {domains.map((domain) => (
@@ -198,11 +267,11 @@ export default function SettingsTab() {
             <TextInput
               withAsterisk
               label={tExt('pages.admin.settings.recordContent', {})}
-              description={
+              description={`${
                 domain.recordType === 'A'
                   ? tExt('pages.admin.settings.recordContentA', {})
                   : tExt('pages.admin.settings.recordContentCname', {})
-              }
+              } ${tExt('pages.admin.settings.recordContentFallback', {})}`}
               placeholder={domain.recordType === 'A' ? '203.0.113.10' : 'edge.example.net'}
               value={domain.recordContent}
               onChange={(e) => patch(domain.uuid, { recordContent: e.target.value })}

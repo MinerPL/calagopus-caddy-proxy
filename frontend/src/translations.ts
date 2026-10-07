@@ -86,6 +86,12 @@ const translations = defineTranslations({
           recordContent: 'Points at',
           recordContentA: 'IPv4 address of the Caddy host',
           recordContentCname: 'Hostname the subdomain should follow',
+          recordContentFallback: 'Used when the server’s node has no point of its own.',
+          nodePointsTitle: 'Node points',
+          nodePointsDescription:
+            'A subdomain points at the record of the node its server runs on. Leave a node blank to use the point on the allowed domain. Everything stays on this page.',
+          nodePointsEmpty: 'This panel has no nodes yet.',
+          nodeName: 'Node',
           cloudflare: 'Create records in Cloudflare',
           cloudflareDescription: 'Uses the zone id and token below when a user adds a subdomain.',
           zoneId: 'Zone ID',

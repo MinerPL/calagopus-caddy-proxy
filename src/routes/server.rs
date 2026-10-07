@@ -73,16 +73,22 @@ struct PublicDomain {
     cloudflare: bool,
 }
 
-fn public_domains(settings: &ExtensionSettingsData) -> Vec<PublicDomain> {
+fn public_domains(settings: &ExtensionSettingsData, node_uuid: Uuid) -> Vec<PublicDomain> {
     settings
         .domains
         .iter()
-        .map(|domain| PublicDomain {
-            cloudflare: domain.cloudflare_enabled,
-            uuid: domain.uuid,
-            domain: domain.domain.clone(),
-            record_type: domain.record_type.clone(),
-            record_content: domain.record_content.clone(),
+        .map(|domain| {
+            let (record_type, record_content) = settings.record_for(domain, node_uuid).unwrap_or((
+                domain.record_type.clone(),
+                domain.record_content.clone(),
+            ));
+            PublicDomain {
+                cloudflare: domain.cloudflare_enabled,
+                uuid: domain.uuid,
+                domain: domain.domain.clone(),
+                record_type,
+                record_content,
+            }
         })
         .collect()
 }
@@ -137,7 +143,7 @@ mod list {
             labels: api_labels(&routes),
             limit: model::caddy_domains(&server)?,
             allow_custom_domains: settings.allow_custom_domains,
-            allowed_domains: public_domains(&settings),
+            allowed_domains: public_domains(&settings, server.node.uuid),
             routes: routes.into_iter().map(api_route).collect(),
         })
         .ok()
@@ -213,7 +219,7 @@ mod create {
                     .as_deref()
                     .filter(|name| !name.trim().is_empty())
                     .ok_or_else(|| ApiResponse::error("enter a subdomain name"))?;
-                service::create_subdomain(&state, &server, allowed, name, port).await?
+                service::create_subdomain(&state, &server, &settings, allowed, name, port).await?
             }
             "custom" => {
                 let domain = data

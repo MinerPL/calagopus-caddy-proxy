@@ -1,7 +1,7 @@
 use super::State;
 use crate::{
     domain,
-    settings::{AllowedDomain, ExtensionSettingsData},
+    settings::{AllowedDomain, ExtensionSettingsData, NodePoint},
 };
 use shared::response::DisplayError;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -68,6 +68,62 @@ fn prepare_domains(
     Ok(prepared)
 }
 
+fn prepare_points(
+    incoming: Vec<NodePointPayload>,
+    nodes: &[ApiNode],
+) -> Result<Vec<NodePoint>, anyhow::Error> {
+    let mut prepared = Vec::new();
+    let mut seen = Vec::new();
+
+    for point in incoming {
+        let content = point.record_content.trim();
+        if content.is_empty() {
+            continue;
+        }
+        let name = nodes
+            .iter()
+            .find(|node| node.uuid == point.node_uuid)
+            .map(|node| node.name.as_str())
+            .ok_or_else(|| invalid("that node does not exist"))?;
+        if seen.contains(&point.node_uuid) {
+            return Err(invalid(format!("`{name}` is listed more than once")));
+        }
+        seen.push(point.node_uuid);
+
+        let (record_type, record_content) = domain::normalize_record(&point.record_type, content)
+            .map_err(|err| invalid(format!("{name}: {err}")))?;
+        prepared.push(NodePoint {
+            node_uuid: point.node_uuid,
+            record_type,
+            record_content,
+        });
+    }
+
+    Ok(prepared)
+}
+
+async fn load_nodes(state: &State) -> Result<Vec<ApiNode>, anyhow::Error> {
+    use shared::models::node::Node;
+
+    let mut page = 1_i64;
+    let mut nodes = Vec::new();
+    loop {
+        let batch = Node::all_with_pagination(&state.database, page, 100, None).await?;
+        let total = batch.total;
+        let count = batch.data.len();
+        nodes.extend(batch.data.into_iter().map(|node| ApiNode {
+            uuid: node.uuid,
+            name: node.name.to_string(),
+        }));
+        if count == 0 || nodes.len() as i64 >= total || page >= 20 {
+            break;
+        }
+        page += 1;
+    }
+    nodes.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
+    Ok(nodes)
+}
+
 #[derive(utoipa::ToSchema, serde::Deserialize, garde::Validate)]
 struct DomainPayload {
     #[garde(skip)]
@@ -88,6 +144,16 @@ struct DomainPayload {
     cloudflare_proxied: bool,
 }
 
+#[derive(utoipa::ToSchema, serde::Deserialize, garde::Validate)]
+struct NodePointPayload {
+    #[garde(skip)]
+    node_uuid: Uuid,
+    #[garde(length(chars, min = 1, max = 8))]
+    record_type: String,
+    #[garde(length(chars, max = 253))]
+    record_content: String,
+}
+
 #[derive(utoipa::ToSchema, serde::Serialize)]
 struct ApiDomain {
     uuid: Uuid,
@@ -98,6 +164,19 @@ struct ApiDomain {
     cloudflare_zone_id: String,
     cloudflare_token_set: bool,
     cloudflare_proxied: bool,
+}
+
+#[derive(utoipa::ToSchema, serde::Serialize)]
+struct ApiNode {
+    uuid: Uuid,
+    name: String,
+}
+
+#[derive(utoipa::ToSchema, serde::Serialize)]
+struct ApiNodePoint {
+    node_uuid: Uuid,
+    record_type: String,
+    record_content: String,
 }
 
 fn api_domain(domain: &AllowedDomain) -> ApiDomain {
@@ -113,8 +192,20 @@ fn api_domain(domain: &AllowedDomain) -> ApiDomain {
     }
 }
 
+fn api_points(settings: &ExtensionSettingsData) -> Vec<ApiNodePoint> {
+    settings
+        .node_points
+        .iter()
+        .map(|point| ApiNodePoint {
+            node_uuid: point.node_uuid,
+            record_type: point.record_type.clone(),
+            record_content: point.record_content.clone(),
+        })
+        .collect()
+}
+
 mod get {
-    use super::{api_domain, ApiDomain};
+    use super::{api_domain, api_points, load_nodes, ApiDomain, ApiNode, ApiNodePoint};
     use crate::{db, settings};
     use serde::Serialize;
     use shared::{
@@ -129,6 +220,8 @@ mod get {
         allow_custom_domains: bool,
         default_limit: i32,
         domains: Vec<ApiDomain>,
+        nodes: Vec<ApiNode>,
+        node_points: Vec<ApiNodePoint>,
         pending_cleanup: i64,
     }
 
@@ -140,6 +233,8 @@ mod get {
             allow_custom_domains: settings.allow_custom_domains,
             default_limit: settings.default_limit,
             pending_cleanup: db::pending_cleanup(db::pool(&state.database)).await?,
+            nodes: load_nodes(&state).await?,
+            node_points: api_points(&settings),
             domains: settings.domains.iter().map(api_domain).collect(),
         })
         .ok()
@@ -147,7 +242,10 @@ mod get {
 }
 
 mod put {
-    use super::{api_domain, prepare_domains, DomainPayload};
+    use super::{
+        api_domain, api_points, load_nodes, prepare_domains, prepare_points, ApiNode, DomainPayload,
+        NodePointPayload,
+    };
     use crate::{db, settings};
     use garde::Validate;
     use serde::{Deserialize, Serialize};
@@ -166,6 +264,8 @@ mod put {
         default_limit: i32,
         #[garde(dive)]
         domains: Vec<DomainPayload>,
+        #[garde(dive)]
+        node_points: Vec<NodePointPayload>,
     }
 
     #[derive(ToSchema, Serialize)]
@@ -173,6 +273,8 @@ mod put {
         allow_custom_domains: bool,
         default_limit: i32,
         domains: Vec<super::ApiDomain>,
+        nodes: Vec<ApiNode>,
+        node_points: Vec<super::ApiNodePoint>,
         pending_cleanup: i64,
     }
 
@@ -192,7 +294,9 @@ mod put {
         permissions.has_admin_permission("caddy.manage")?;
 
         let current = settings::load(&state).await?;
+        let nodes = load_nodes(&state).await?;
         let domains = prepare_domains(&current, data.domains)?;
+        let node_points = prepare_points(data.node_points, &nodes)?;
 
         for existing in &current.domains {
             let next = domains.iter().find(|domain| domain.uuid == existing.uuid);
@@ -227,11 +331,16 @@ mod put {
         extension.allow_custom_domains = data.allow_custom_domains;
         extension.default_limit = data.default_limit;
         extension.domains = domains;
+        extension.node_points = node_points;
+        let node_points = api_points(extension);
+        let domains = extension.domains.iter().map(api_domain).collect();
         let response = Response {
             allow_custom_domains: extension.allow_custom_domains,
             default_limit: extension.default_limit,
             pending_cleanup,
-            domains: extension.domains.iter().map(api_domain).collect(),
+            nodes,
+            node_points,
+            domains,
         };
         stored.save().await?;
 
@@ -240,6 +349,7 @@ mod put {
                 "settings:caddy.update",
                 serde_json::json!({
                     "domains": response.domains.len(),
+                    "node_points": response.node_points.len(),
                     "allow_custom_domains": response.allow_custom_domains,
                     "default_limit": response.default_limit,
                 }),

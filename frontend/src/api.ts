@@ -45,10 +45,23 @@ const adminDomainSchema = z.object({
   cloudflareProxied: z.boolean(),
 });
 
+const nodeSchema = z.object({
+  uuid: z.string(),
+  name: z.string(),
+});
+
+const nodePointSchema = z.object({
+  nodeUuid: z.string(),
+  recordType: z.enum(['A', 'CNAME']),
+  recordContent: z.string(),
+});
+
 const settingsSchema = z.object({
   allowCustomDomains: z.boolean(),
   defaultLimit: z.number(),
   domains: z.array(adminDomainSchema),
+  nodes: z.array(nodeSchema),
+  nodePoints: z.array(nodePointSchema),
   pendingCleanup: z.number(),
 });
 
@@ -90,6 +103,7 @@ const settingsWriteSchema = z.object({
       cloudflareProxied: z.boolean(),
     }),
   ),
+  nodePoints: z.array(nodePointSchema),
 });
 
 const testSchema = z.object({
@@ -109,6 +123,9 @@ export type CaddySettings = z.infer<typeof settingsSchema>;
 export type AdminCaddyRoute = z.infer<typeof adminRouteSchema>;
 export type DomainDraft = z.infer<typeof settingsWriteSchema>['domains'][number] & {
   cloudflareTokenSet: boolean;
+};
+export type NodePointDraft = z.infer<typeof nodePointSchema> & {
+  name: string;
 };
 
 export const getServerCaddy = async (serverUuid: string): Promise<ServerCaddy> => {
