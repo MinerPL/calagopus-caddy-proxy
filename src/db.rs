@@ -203,13 +203,13 @@ pub async fn admin_routes(
     let offset = (page - 1) * per_page;
     let pattern = search.map(like_pattern);
     let rows = sqlx::query(
-        "SELECT uuid, server_uuid, kind, domain, allowed_domain_uuid, port, \
-         record_type, record_content, cloudflare_zone_id, cloudflare_record_id, created, \
+        "SELECT r.uuid, r.server_uuid, r.kind, r.domain, r.allowed_domain_uuid, r.port, \
+         r.record_type, r.record_content, r.cloudflare_zone_id, r.cloudflare_record_id, r.created, \
          servers.name AS server_name, COUNT(*) OVER() AS total_count \
-         FROM dev_minerpl_caddyproxy_routes \
-         JOIN servers ON servers.uuid = dev_minerpl_caddyproxy_routes.server_uuid \
-         WHERE ($1::text IS NULL OR dev_minerpl_caddyproxy_routes.domain ILIKE $1 ESCAPE '\\') \
-         ORDER BY dev_minerpl_caddyproxy_routes.created DESC \
+         FROM dev_minerpl_caddyproxy_routes AS r \
+         JOIN servers ON servers.uuid = r.server_uuid \
+         WHERE ($1::text IS NULL OR r.domain ILIKE $1 ESCAPE '\\') \
+         ORDER BY r.created DESC \
          LIMIT $2 OFFSET $3",
     )
     .bind(pattern)
