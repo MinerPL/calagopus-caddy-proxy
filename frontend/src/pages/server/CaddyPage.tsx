@@ -35,7 +35,7 @@ export default function CaddyPage() {
 
   const count = data?.routes.length ?? 0;
   const limit = data?.limit ?? 0;
-  const configured = !!data && (data.allowedDomains.length > 0 || data.allowCustomDomains);
+  const configured = !!data && ((data.nodePointSet && data.allowedDomains.length > 0) || data.allowCustomDomains);
   const atLimit = !!data && count >= limit;
   const createDisabled = !configured || atLimit;
   const labelText = data?.labels.map((label) => `${label.key}: ${label.value}`).join('\n') ?? '';
@@ -68,6 +68,9 @@ export default function CaddyPage() {
     >
       <Stack gap='md'>
         {data && !configured && <Alert color='yellow'>{tExt('pages.server.notConfigured', {})}</Alert>}
+        {data && data.allowedDomains.length > 0 && !data.nodePointSet && (
+          <Alert color='yellow'>{tExt('pages.server.nodePointMissing', {})}</Alert>
+        )}
         {count > 0 && <Alert color='blue'>{tExt('pages.server.restart', {})}</Alert>}
 
         {data && data.labels.length > 0 && (

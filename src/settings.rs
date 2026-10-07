@@ -12,10 +12,6 @@ pub struct AllowedDomain {
     pub uuid: Uuid,
     /// Apex users may create names under, such as `example.com`.
     pub domain: String,
-    /// `A` or `CNAME`.
-    pub record_type: String,
-    /// IPv4 address or hostname the subdomain should resolve to.
-    pub record_content: String,
     pub cloudflare_enabled: bool,
     pub cloudflare_zone_id: String,
     pub cloudflare_api_token: String,
@@ -56,19 +52,15 @@ impl ExtensionSettingsData {
         self.domains.iter().find(|domain| domain.uuid == uuid)
     }
 
-    /// The node's own point when one is saved, otherwise the domain's point.
-    pub fn record_for(
-        &self,
-        domain: &AllowedDomain,
-        node_uuid: Uuid,
-    ) -> Result<(String, String), String> {
+    /// Public record for subdomains created on servers that run on this node.
+    pub fn record_for_node(&self, node_uuid: Uuid) -> Result<(String, String), String> {
         match self
             .node_points
             .iter()
             .find(|point| point.node_uuid == node_uuid)
         {
             Some(point) => domain::normalize_record(&point.record_type, &point.record_content),
-            None => domain::normalize_record(&domain.record_type, &domain.record_content),
+            None => Err("set a public record for this server's node".to_string()),
         }
     }
 }

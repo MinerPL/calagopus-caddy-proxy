@@ -19,6 +19,7 @@ mod db;
 mod domain;
 mod labels;
 mod model;
+mod node_record;
 mod routes;
 mod service;
 mod settings;

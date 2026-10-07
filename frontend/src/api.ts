@@ -21,8 +21,8 @@ const labelSchema = z.object({
 const publicDomainSchema = z.object({
   uuid: z.string(),
   domain: z.string(),
-  recordType: z.enum(['A', 'CNAME']),
-  recordContent: z.string(),
+  recordType: z.enum(['A', 'CNAME']).nullable(),
+  recordContent: z.string().nullable(),
   cloudflare: z.boolean(),
 });
 
@@ -31,14 +31,13 @@ const serverCaddySchema = z.object({
   labels: z.array(labelSchema),
   limit: z.number(),
   allowCustomDomains: z.boolean(),
+  nodePointSet: z.boolean(),
   allowedDomains: z.array(publicDomainSchema),
 });
 
 const adminDomainSchema = z.object({
   uuid: z.string(),
   domain: z.string(),
-  recordType: z.enum(['A', 'CNAME']),
-  recordContent: z.string(),
   cloudflareEnabled: z.boolean(),
   cloudflareZoneId: z.string(),
   cloudflareTokenSet: z.boolean(),
@@ -48,6 +47,7 @@ const adminDomainSchema = z.object({
 const nodeSchema = z.object({
   uuid: z.string(),
   name: z.string(),
+  domain: z.string().nullable(),
 });
 
 const nodePointSchema = z.object({
@@ -95,8 +95,6 @@ const settingsWriteSchema = z.object({
     z.object({
       uuid: z.string(),
       domain: z.string(),
-      recordType: z.enum(['A', 'CNAME']),
-      recordContent: z.string(),
       cloudflareEnabled: z.boolean(),
       cloudflareZoneId: z.string(),
       cloudflareApiToken: z.string().optional(),
@@ -126,6 +124,7 @@ export type DomainDraft = z.infer<typeof settingsWriteSchema>['domains'][number]
 };
 export type NodePointDraft = z.infer<typeof nodePointSchema> & {
   name: string;
+  domain: string | null;
 };
 
 export const getServerCaddy = async (serverUuid: string): Promise<ServerCaddy> => {

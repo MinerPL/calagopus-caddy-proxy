@@ -68,27 +68,24 @@ struct ApiRoute {
 struct PublicDomain {
     uuid: Uuid,
     domain: String,
-    record_type: String,
-    record_content: String,
+    record_type: Option<String>,
+    record_content: Option<String>,
     cloudflare: bool,
 }
 
-fn public_domains(settings: &ExtensionSettingsData, node_uuid: Uuid) -> Vec<PublicDomain> {
+fn public_domains(
+    settings: &ExtensionSettingsData,
+    record: Option<&(String, String)>,
+) -> Vec<PublicDomain> {
     settings
         .domains
         .iter()
-        .map(|domain| {
-            let (record_type, record_content) = settings.record_for(domain, node_uuid).unwrap_or((
-                domain.record_type.clone(),
-                domain.record_content.clone(),
-            ));
-            PublicDomain {
-                cloudflare: domain.cloudflare_enabled,
-                uuid: domain.uuid,
-                domain: domain.domain.clone(),
-                record_type,
-                record_content,
-            }
+        .map(|domain| PublicDomain {
+            cloudflare: domain.cloudflare_enabled,
+            uuid: domain.uuid,
+            domain: domain.domain.clone(),
+            record_type: record.map(|(kind, _)| kind.clone()),
+            record_content: record.map(|(_, content)| content.clone()),
         })
         .collect()
 }
@@ -123,6 +120,7 @@ mod list {
         labels: Vec<ApiLabel>,
         limit: i32,
         allow_custom_domains: bool,
+        node_point_set: bool,
         allowed_domains: Vec<PublicDomain>,
     }
 
@@ -138,12 +136,20 @@ mod list {
 
         let settings = settings::load(&state).await?;
         let routes = db::routes_for_server(db::pool(&state.database), server.uuid).await?;
+        let record = match settings.record_for_node(server.node.uuid) {
+            Ok(record) => Some(record),
+            Err(_) => match server.node.fetch(&state.database).await {
+                Ok(node) => crate::node_record::default_record(&node),
+                Err(_) => None,
+            },
+        };
 
         ApiResponse::new_serialized(Response {
             labels: api_labels(&routes),
             limit: model::caddy_domains(&server)?,
             allow_custom_domains: settings.allow_custom_domains,
-            allowed_domains: public_domains(&settings, server.node.uuid),
+            node_point_set: record.is_some(),
+            allowed_domains: public_domains(&settings, record.as_ref()),
             routes: routes.into_iter().map(api_route).collect(),
         })
         .ok()

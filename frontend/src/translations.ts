@@ -15,6 +15,7 @@ const translations = defineTranslations({
         subtitle: '{count} of {limit} domains used',
         empty: 'No domains yet. Add a subdomain or point a domain you already own at this server.',
         notConfigured: 'An administrator still needs to add an allowed domain, or enable custom domains.',
+        nodePointMissing: 'This server’s node has no public record yet. An administrator sets that under the Caddy extension.',
         restart: 'Restart the server after adding or removing a domain. Caddy Docker Proxy reads the labels the next time the container is created.',
         labels: 'Container labels',
         labelsHint: 'Click to copy. These are written onto the server container.',
@@ -75,7 +76,7 @@ const translations = defineTranslations({
         settings: {
           title: 'Allowed domains',
           description:
-            'Users can create a subdomain of any domain listed here. The public record is where that name resolves: an A record to an IPv4 address, or a CNAME to a hostname. Turn on Cloudflare to create the record automatically.',
+            'Users can create a subdomain of any domain listed here. The address comes from the node that server runs on. Turn on Cloudflare to create the record automatically.',
           allowCustom: 'Allow custom domains',
           allowCustomDescription: 'Lets a user attach a domain they manage themselves. No DNS record is created.',
           defaultLimit: 'Default domain limit',
@@ -84,11 +85,10 @@ const translations = defineTranslations({
           domain: 'Domain',
           recordType: 'Record',
           recordContent: 'Points at',
-          recordContentA: 'IPv4 address of the Caddy host',
-          recordContentCname: 'Hostname the subdomain should follow',
-          recordContentFallback: 'Used when the server’s node has no point of its own.',
           nodePointsTitle: 'Node points',
-          nodePointsDescription: 'Subdomains on a node resolve here. Leave a row blank to use that domain’s point.',
+          nodePointsDescription:
+            'Every node needs a record. It starts as a CNAME to that node’s domain, and a subdomain uses the record of the node its server runs on.',
+          nodePointRequired: 'Required',
           nodePointsEmpty: 'This panel has no nodes yet.',
           nodeName: 'Node',
           cloudflare: 'Create records in Cloudflare',

@@ -26,10 +26,6 @@ fn prepare_domains(
         }
         seen.push(hostname.clone());
 
-        let (record_type, record_content) =
-            domain::normalize_record(&domain.record_type, &domain.record_content)
-                .map_err(invalid)?;
-
         let uuid = domain.uuid.unwrap_or_else(Uuid::new_v4);
         let previous = current
             .domains
@@ -56,8 +52,6 @@ fn prepare_domains(
         prepared.push(AllowedDomain {
             uuid,
             domain: hostname,
-            record_type,
-            record_content,
             cloudflare_enabled: domain.cloudflare_enabled,
             cloudflare_zone_id: domain.cloudflare_zone_id.trim().to_string(),
             cloudflare_api_token: token,
@@ -72,28 +66,30 @@ fn prepare_points(
     incoming: Vec<NodePointPayload>,
     nodes: &[ApiNode],
 ) -> Result<Vec<NodePoint>, anyhow::Error> {
-    let mut prepared = Vec::new();
-    let mut seen = Vec::new();
+    let mut prepared = Vec::with_capacity(nodes.len());
 
-    for point in incoming {
+    for node in nodes {
+        let point = incoming
+            .iter()
+            .find(|point| point.node_uuid == node.uuid)
+            .ok_or_else(|| invalid(format!("`{}` needs a public record", node.name)))?;
+        if incoming
+            .iter()
+            .filter(|point| point.node_uuid == node.uuid)
+            .count()
+            > 1
+        {
+            return Err(invalid(format!("`{}` is listed more than once", node.name)));
+        }
+
         let content = point.record_content.trim();
         if content.is_empty() {
-            continue;
+            return Err(invalid(format!("`{}` needs a public record", node.name)));
         }
-        let name = nodes
-            .iter()
-            .find(|node| node.uuid == point.node_uuid)
-            .map(|node| node.name.as_str())
-            .ok_or_else(|| invalid("that node does not exist"))?;
-        if seen.contains(&point.node_uuid) {
-            return Err(invalid(format!("`{name}` is listed more than once")));
-        }
-        seen.push(point.node_uuid);
-
         let (record_type, record_content) = domain::normalize_record(&point.record_type, content)
-            .map_err(|err| invalid(format!("{name}: {err}")))?;
+            .map_err(|err| invalid(format!("{}: {err}", node.name)))?;
         prepared.push(NodePoint {
-            node_uuid: point.node_uuid,
+            node_uuid: node.uuid,
             record_type,
             record_content,
         });
@@ -112,6 +108,7 @@ async fn load_nodes(state: &State) -> Result<Vec<ApiNode>, anyhow::Error> {
         let total = batch.total;
         let count = batch.data.len();
         nodes.extend(batch.data.into_iter().map(|node| ApiNode {
+            domain: crate::node_record::hostname(&node),
             uuid: node.uuid,
             name: node.name.to_string(),
         }));
@@ -130,10 +127,6 @@ struct DomainPayload {
     uuid: Option<Uuid>,
     #[garde(length(chars, min = 1, max = 253))]
     domain: String,
-    #[garde(length(chars, min = 1, max = 8))]
-    record_type: String,
-    #[garde(length(chars, min = 1, max = 253))]
-    record_content: String,
     #[garde(skip)]
     cloudflare_enabled: bool,
     #[garde(length(chars, max = 64))]
@@ -158,8 +151,6 @@ struct NodePointPayload {
 struct ApiDomain {
     uuid: Uuid,
     domain: String,
-    record_type: String,
-    record_content: String,
     cloudflare_enabled: bool,
     cloudflare_zone_id: String,
     cloudflare_token_set: bool,
@@ -170,6 +161,8 @@ struct ApiDomain {
 struct ApiNode {
     uuid: Uuid,
     name: String,
+    /// Hostname of the node, used to prefill a CNAME.
+    domain: Option<String>,
 }
 
 #[derive(utoipa::ToSchema, serde::Serialize)]
@@ -184,8 +177,6 @@ fn api_domain(domain: &AllowedDomain) -> ApiDomain {
         cloudflare_token_set: !domain.cloudflare_api_token.is_empty(),
         uuid: domain.uuid,
         domain: domain.domain.clone(),
-        record_type: domain.record_type.clone(),
-        record_content: domain.record_content.clone(),
         cloudflare_enabled: domain.cloudflare_enabled,
         cloudflare_zone_id: domain.cloudflare_zone_id.clone(),
         cloudflare_proxied: domain.cloudflare_proxied,

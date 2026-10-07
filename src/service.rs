@@ -81,9 +81,14 @@ pub async fn create_subdomain(
         return Err(invalid("that domain is already in use"));
     }
 
-    let (record_type, record_content) = settings
-        .record_for(allowed, server.node.uuid)
-        .map_err(invalid)?;
+    let (record_type, record_content) = match settings.record_for_node(server.node.uuid) {
+        Ok(record) => record,
+        Err(_) => {
+            let node = server.node.fetch(&state.database).await?;
+            crate::node_record::default_record(&node)
+                .ok_or_else(|| invalid("set a public record for this server's node"))?
+        }
+    };
     if record_type == "CNAME" && record_content == fqdn {
         return Err(invalid("a cname record cannot point at itself"));
     }

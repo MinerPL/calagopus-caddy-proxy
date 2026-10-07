@@ -8,6 +8,7 @@ import Select from '@/elements/input/Select.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import SegmentedControl from '@/elements/layout/SegmentedControl.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
+import Alert from '@/elements/feedback/Alert.tsx';
 import FormModal from '@/elements/modals/FormModal.tsx';
 import { ModalFooter } from '@/elements/modals/Modal.tsx';
 import Text from '@/elements/typography/Text.tsx';
@@ -80,7 +81,11 @@ export default function RouteModal({
   const customValid = validHostname(domain);
   const parsedPort = portNumber(port);
   const portValid = Number.isInteger(parsedPort) && parsedPort >= 1 && parsedPort <= 65535;
-  const domainValid = route ? true : kind === 'custom' ? customValid : !!allowed && nameValid;
+  const domainValid = route
+    ? true
+    : kind === 'custom'
+      ? customValid
+      : !!allowed && nameValid && data.nodePointSet;
 
   const doSubmit = async () => {
     setLoading(true);
@@ -143,7 +148,11 @@ export default function RouteModal({
           <TextInput label={tExt('pages.server.modal.preview', {})} value={route.domain} readOnly disabled />
         )}
 
-        {!route && kind === 'subdomain' && (
+        {!route && kind === 'subdomain' && !data.nodePointSet && (
+          <Alert color='yellow'>{tExt('pages.server.nodePointMissing', {})}</Alert>
+        )}
+
+        {!route && kind === 'subdomain' && data.nodePointSet && (
           <>
             <Select
               withAsterisk
@@ -166,7 +175,7 @@ export default function RouteModal({
               onChange={(e) => setName(e.target.value)}
               error={name.length > 0 && !nameValid}
             />
-            {allowed && nameValid && (
+            {allowed && nameValid && allowed.recordType && allowed.recordContent && (
               <Text size='sm'>
                 {allowed.cloudflare
                   ? tExt('pages.server.modal.dnsAuto', {

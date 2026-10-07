@@ -1,4 +1,4 @@
-import { Center, SimpleGrid } from '@mantine/core';
+import { Center } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
@@ -10,7 +10,6 @@ import Alert from '@/elements/feedback/Alert.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import NumberInput from '@/elements/input/NumberInput.tsx';
 import PasswordInput from '@/elements/input/PasswordInput.tsx';
-import Select from '@/elements/input/Select.tsx';
 import Switch from '@/elements/input/Switch.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
@@ -28,8 +27,6 @@ function blankDomain(): DomainDraft {
   return {
     uuid: crypto.randomUUID(),
     domain: '',
-    recordType: 'A',
-    recordContent: '',
     cloudflareEnabled: false,
     cloudflareZoneId: '',
     cloudflareApiToken: '',
@@ -64,8 +61,6 @@ export default function SettingsTab() {
       data.domains.map((domain) => ({
         uuid: domain.uuid,
         domain: domain.domain,
-        recordType: domain.recordType,
-        recordContent: domain.recordContent,
         cloudflareEnabled: domain.cloudflareEnabled,
         cloudflareZoneId: domain.cloudflareZoneId,
         cloudflareApiToken: '',
@@ -79,8 +74,9 @@ export default function SettingsTab() {
         return {
           nodeUuid: node.uuid,
           name: node.name,
-          recordType: saved?.recordType ?? 'A',
-          recordContent: saved?.recordContent ?? '',
+          domain: node.domain,
+          recordType: saved?.recordType ?? 'CNAME',
+          recordContent: saved?.recordContent ?? node.domain ?? '',
         };
       }),
     );
@@ -108,10 +104,11 @@ export default function SettingsTab() {
 
   const limit = typeof defaultLimit === 'number' ? defaultLimit : Number(defaultLimit);
   const incomplete = domains.some((domain) => {
-    if (!domain.domain.trim() || !domain.recordContent.trim()) return true;
+    if (!domain.domain.trim()) return true;
     if (!domain.cloudflareEnabled) return false;
     return !domain.cloudflareZoneId.trim() || (!domain.cloudflareApiToken.trim() && !domain.cloudflareTokenSet);
   });
+  const pointsIncomplete = nodePoints.some((point) => !point.recordContent.trim());
 
   const doSave = async () => {
     setSaving(true);
@@ -122,20 +119,16 @@ export default function SettingsTab() {
         domains: domains.map((domain) => ({
           uuid: domain.uuid,
           domain: domain.domain,
-          recordType: domain.recordType,
-          recordContent: domain.recordContent,
           cloudflareEnabled: domain.cloudflareEnabled,
           cloudflareZoneId: domain.cloudflareZoneId,
           cloudflareApiToken: domain.cloudflareApiToken.trim() || undefined,
           cloudflareProxied: domain.cloudflareProxied,
         })),
-        nodePoints: nodePoints
-          .filter((point) => point.recordContent.trim())
-          .map((point) => ({
-            nodeUuid: point.nodeUuid,
-            recordType: point.recordType,
-            recordContent: point.recordContent.trim(),
-          })),
+        nodePoints: nodePoints.map((point) => ({
+          nodeUuid: point.nodeUuid,
+          recordType: point.recordType,
+          recordContent: point.recordContent.trim(),
+        })),
       });
       addToast(tExt('pages.admin.settings.saved', {}), 'success');
       queryClient.invalidateQueries({ queryKey: adminSettingsQueryKey });
@@ -208,7 +201,10 @@ export default function SettingsTab() {
             columns={[
               tExt('pages.admin.settings.nodeName', {}),
               tExt('pages.admin.settings.recordType', {}),
-              tExt('pages.admin.settings.recordContent', {}),
+              {
+                name: tExt('pages.admin.settings.recordContent', {}),
+                hint: tExt('pages.admin.settings.nodePointRequired', {}),
+              },
             ]}
           >
             {nodePoints.map((point) => (
@@ -231,7 +227,9 @@ export default function SettingsTab() {
                 </TableData>
                 <TableData style={{ verticalAlign: 'middle', width: '55%' }}>
                   <TextInput
-                    placeholder={point.recordType === 'A' ? '203.0.113.10' : 'edge.example.net'}
+                    placeholder={
+                      point.recordType === 'A' ? '203.0.113.10' : point.domain || 'node.example.com'
+                    }
                     value={point.recordContent}
                     onChange={(e) => patchPoint(point.nodeUuid, { recordContent: e.target.value })}
                     disabled={!canManage}
@@ -248,39 +246,12 @@ export default function SettingsTab() {
       {domains.map((domain) => (
         <TitleCard key={domain.uuid} title={domain.domain || tExt('pages.admin.settings.domain', {})}>
           <Stack gap='md'>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <TextInput
-                withAsterisk
-                label={tExt('pages.admin.settings.domain', {})}
-                placeholder='example.com'
-                value={domain.domain}
-                onChange={(e) => patch(domain.uuid, { domain: e.target.value })}
-                disabled={!canManage}
-              />
-              <Select
-                withAsterisk
-                label={tExt('pages.admin.settings.recordType', {})}
-                data={[
-                  { value: 'A', label: 'A' },
-                  { value: 'CNAME', label: 'CNAME' },
-                ]}
-                value={domain.recordType}
-                onChange={(value) => value && patch(domain.uuid, { recordType: value as 'A' | 'CNAME' })}
-                allowDeselect={false}
-                disabled={!canManage}
-              />
-            </SimpleGrid>
             <TextInput
               withAsterisk
-              label={tExt('pages.admin.settings.recordContent', {})}
-              description={`${
-                domain.recordType === 'A'
-                  ? tExt('pages.admin.settings.recordContentA', {})
-                  : tExt('pages.admin.settings.recordContentCname', {})
-              } ${tExt('pages.admin.settings.recordContentFallback', {})}`}
-              placeholder={domain.recordType === 'A' ? '203.0.113.10' : 'edge.example.net'}
-              value={domain.recordContent}
-              onChange={(e) => patch(domain.uuid, { recordContent: e.target.value })}
+              label={tExt('pages.admin.settings.domain', {})}
+              placeholder='example.com'
+              value={domain.domain}
+              onChange={(e) => patch(domain.uuid, { domain: e.target.value })}
               disabled={!canManage}
             />
             <Text size='xs' c='dimmed'>
@@ -352,7 +323,11 @@ export default function SettingsTab() {
           {tExt('pages.admin.settings.add', {})}
         </Button>
         <AdminCan action='caddy.manage' cantSave>
-          <Button onClick={doSave} loading={saving} disabled={incomplete || !Number.isInteger(limit)}>
+          <Button
+            onClick={doSave}
+            loading={saving}
+            disabled={incomplete || pointsIncomplete || !Number.isInteger(limit)}
+          >
             {tExt('pages.admin.settings.save', {})}
           </Button>
         </AdminCan>
