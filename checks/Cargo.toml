@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "caddy_checks"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+indexmap = "=2.6.0"
