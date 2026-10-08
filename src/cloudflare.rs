@@ -20,9 +20,7 @@ fn gateway(message: impl Into<String>) -> anyhow::Error {
         .into()
 }
 
-async fn cloudflare_error(response: reqwest::Response) -> anyhow::Error {
-    let status = response.status();
-    let body: Value = response.json().await.unwrap_or_default();
+fn cloudflare_error(status: reqwest::StatusCode, body: &Value) -> anyhow::Error {
     let messages = body["errors"]
         .as_array()
         .map(|errors| {
@@ -39,6 +37,67 @@ async fn cloudflare_error(response: reqwest::Response) -> anyhow::Error {
     } else {
         format!("cloudflare: {messages}")
     })
+}
+
+fn record_already_exists(body: &Value) -> bool {
+    body["errors"].as_array().is_some_and(|errors| {
+        errors.iter().any(|error| {
+            matches!(error["code"].as_i64(), Some(81053) | Some(81057) | Some(81058))
+                || error["message"].as_str().is_some_and(|message| {
+                    message.to_ascii_lowercase().contains("already exists")
+                })
+        })
+    })
+}
+
+pub fn stale_record_message(name: &str, record_types: &[String]) -> String {
+    let kind = match record_types {
+        [kind] if kind == "A" => "an A record".to_string(),
+        [kind] if kind == "CNAME" => "a CNAME record".to_string(),
+        kinds => format!("{} records", kinds.join(" and ")),
+    };
+    format!("{name} already has {kind}. Contact an administrator to remove the stale record.")
+}
+
+fn same_name(left: &str, right: &str) -> bool {
+    left.trim_end_matches('.')
+        .eq_ignore_ascii_case(right.trim_end_matches('.'))
+}
+
+/// A or CNAME records already published for `name`. Other types, such as TXT, are ignored.
+pub async fn address_records(
+    zone_id: &str,
+    token: &str,
+    name: &str,
+) -> Result<Vec<String>, anyhow::Error> {
+    let response = client()?
+        .get(format!("{BASE}/zones/{zone_id}/dns_records"))
+        .bearer_auth(token)
+        .query(&[("name", name), ("per_page", "100")])
+        .send()
+        .await
+        .map_err(|err| gateway(format!("cloudflare: {err}")))?;
+
+    let status = response.status();
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|err| gateway(format!("cloudflare: {err}")))?;
+    if !status.is_success() {
+        return Err(cloudflare_error(status, &body));
+    }
+
+    let mut types = Vec::new();
+    for record in body["result"].as_array().into_iter().flatten() {
+        let record_type = record["type"].as_str().unwrap_or_default().to_ascii_uppercase();
+        let record_name = record["name"].as_str().unwrap_or_default();
+        if matches!(record_type.as_str(), "A" | "CNAME") && same_name(record_name, name) {
+            types.push(record_type);
+        }
+    }
+    types.sort();
+    types.dedup();
+    Ok(types)
 }
 
 pub async fn create_record(
@@ -64,7 +123,16 @@ pub async fn create_record(
         .map_err(|err| gateway(format!("cloudflare: {err}")))?;
 
     if !response.status().is_success() {
-        return Err(cloudflare_error(response).await);
+        let status = response.status();
+        let body: Value = response.json().await.unwrap_or_default();
+        if record_already_exists(&body) {
+            return Err(
+                DisplayError::new(stale_record_message(name, &[record_type.to_string()]))
+                    .with_status(StatusCode::BAD_REQUEST)
+                    .into(),
+            );
+        }
+        return Err(cloudflare_error(status, &body));
     }
 
     let body: Value = response
@@ -93,7 +161,9 @@ pub async fn delete_record(
     if response.status() == reqwest::StatusCode::NOT_FOUND || response.status().is_success() {
         return Ok(());
     }
-    Err(cloudflare_error(response).await)
+    let status = response.status();
+    let body: Value = response.json().await.unwrap_or_default();
+    Err(cloudflare_error(status, &body))
 }
 
 /// Confirms the token can read the zone and that the zone covers `domain`.
@@ -110,7 +180,9 @@ pub async fn verify_zone(
         .map_err(|err| gateway(format!("cloudflare: {err}")))?;
 
     if !response.status().is_success() {
-        return Err(cloudflare_error(response).await);
+        let status = response.status();
+        let body: Value = response.json().await.unwrap_or_default();
+        return Err(cloudflare_error(status, &body));
     }
 
     let body: Value = response

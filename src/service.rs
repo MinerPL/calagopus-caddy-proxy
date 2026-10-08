@@ -99,6 +99,15 @@ pub async fn create_subdomain(
                 "cloudflare is enabled for this domain but the zone id or api token is missing",
             ));
         }
+        let existing = cloudflare::address_records(
+            allowed.cloudflare_zone_id.trim(),
+            &allowed.cloudflare_api_token,
+            &fqdn,
+        )
+        .await?;
+        if !existing.is_empty() {
+            return Err(invalid(cloudflare::stale_record_message(&fqdn, &existing)));
+        }
         let id = cloudflare::create_record(
             allowed.cloudflare_zone_id.trim(),
             &allowed.cloudflare_api_token,
