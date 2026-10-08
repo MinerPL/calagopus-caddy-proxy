@@ -1,0 +1,27 @@
+name: Package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pack the extension
+        run: python3 scripts/package.py
+
+      - name: Upload extension archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev_minerpl_caddyproxy.c7s.zip
+          path: dist/dev_minerpl_caddyproxy.c7s.zip
+          if-no-files-found: error
+          compression-level: 0

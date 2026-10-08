@@ -2,3 +2,5 @@
 /checks/target
 node_modules
 /agent-tools
+/dist
+*.c7s.zip
