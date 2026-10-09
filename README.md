@@ -25,7 +25,7 @@ On a Panel checkout, put it at `backend-extensions/dev_minerpl_caddyproxy` (a sy
 panel-rs extensions apply --profile balanced
 ```
 
-On the `:heavy` image, download `dev_minerpl_caddyproxy.c7s.zip` from the latest successful **Package** workflow run (Actions, open the run, then Artifacts). Upload it in Admin → Extensions, or copy it into `./build/extensions` and restart. That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install. The workflow uploads the archive as an artifact and does not publish a release.
+On the `:heavy` image, download `dev_minerpl_caddyproxy.c7s.zip` from the latest successful **Package** workflow run (Actions, open the run, then Artifacts). The download is that file itself. Upload it in Admin → Extensions, or copy it into `./build/extensions` and restart. That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install. The workflow uploads the archive as an artifact and does not publish a release.
 
 To pack the same archive locally:
 
@@ -37,7 +37,7 @@ The file is written to `dist/dev_minerpl_caddyproxy.c7s.zip` and is not committe
 
 ## Updating
 
-Download the new artifact and replace `dev_minerpl_caddyproxy.c7s.zip` in `./build/extensions`, then rebuild. This is the same extension, so saved settings and existing domains stay. Do not add it as a second package, and do not leave two archives with that package name in the folder.
+Download the new artifact, which is `dev_minerpl_caddyproxy.c7s.zip` itself, and replace that file in `./build/extensions`, then rebuild. This is the same extension, so saved settings and existing domains stay. Do not add it as a second package, and do not leave two archives with that package name in the folder.
 
 This package replaces `dev.dawid.caddy`. Delete that older archive from `./build/extensions` before adding this one. Two archives for different package names compile as two extensions, and a second archive of the same package fails the build as already installed. If the old extension already ran, its tables (`dev_dawid_caddy_routes`, `dev_dawid_caddy_cleanup`) are left behind; this package uses its own tables. The `servers.caddy_domains` column is shared and is added only when it is missing.
 

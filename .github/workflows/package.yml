@@ -19,9 +19,8 @@ jobs:
         run: python3 scripts/package.py
 
       - name: Upload extension archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: dev_minerpl_caddyproxy.c7s.zip
           path: dist/dev_minerpl_caddyproxy.c7s.zip
           if-no-files-found: error
-          compression-level: 0
+          archive: false
