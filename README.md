@@ -40,6 +40,53 @@ python3 scripts/package.py
 
 The file is written to `dist/dev_minerpl_caddyproxy.c7s.zip` and is not committed.
 
+## Make it work
+
+The extension only writes container labels and, when Cloudflare is enabled, DNS records. Traffic reaches the server only after [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy) is running on the node and can see those containers.
+
+Do this on every node that will host a published server.
+
+1. Install caddy-docker-proxy from that repository. The container below is the usual way to run it. Publish 80 and 443, and mount the Docker socket so it can read labels.
+
+2. Set `CADDY_INGRESS_NETWORKS` to `calagopus_nw`. That is the Docker network Wings creates for server containers (`docker.network.name` in the Wings config; `calagopus_nw` is the default). If that setting was renamed, use the name that is actually there, in both places below.
+
+3. When Caddy itself runs in Docker, attach that container to `calagopus_nw` as well. Wings already created the network, so mark it external. Do not let Compose create a second network with the same name.
+
+```yaml
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    ports:
+      - 80:80
+      - 443:443/tcp
+      - 443:443/udp
+    environment:
+      - CADDY_INGRESS_NETWORKS=calagopus_nw
+    networks:
+      - calagopus_nw
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - caddy_data:/data
+    restart: unless-stopped
+
+networks:
+  calagopus_nw:
+    external: true
+
+volumes:
+  caddy_data: {}
+```
+
+Start it with `docker compose up -d` from the directory that holds this file. If Caddy is already a container, add `calagopus_nw` to its networks, set the same environment variable, and recreate the container. A one-off `docker network connect calagopus_nw <container>` joins the network until the container is recreated.
+
+Then, in the panel:
+
+1. Finish [Admin setup](#admin-setup): allowed domains, a public record on every node, and Cloudflare if you want subdomains created for you.
+2. On the server, open **Caddy**, add the domain, and type the port the process listens on inside the container.
+3. Restart that server. Wings recreates the container with the new labels, and caddy-docker-proxy picks them up.
+
+Open 80 and 443 through the host firewall to the Caddy container. The node's public record (the CNAME or A address from node points) must be what visitors resolve to, so those ports land on this Caddy.
+
 ## Updating
 
 Download the new artifact, which is `dev_minerpl_caddyproxy.c7s.zip` itself, and replace that file in `./build/extensions`, then rebuild. This is the same extension, so saved settings and existing domains stay. Do not add it as a second package, and do not leave two archives with that package name in the folder.
@@ -69,10 +116,6 @@ A saved public record is copied onto each subdomain when it is created. Editing 
 On the server, open **Caddy** and add a domain. Pick an allowed domain and a name such as `play` or `mc.play`, or type a full custom hostname. Enter the container port.
 
 The page shows the labels that will be applied. Restart the server once they look right. Deleting a domain here also deletes its Cloudflare record. Deleting the server does the same: the route rows go with the server, and each Cloudflare record is deleted. If Cloudflare is down, the token is stored encrypted and a background task retries the delete about once a minute, backing off between attempts. That task runs on the primary Panel instance.
-
-## Caddy on the node
-
-Run caddy-docker-proxy on the same Docker network Wings uses for server containers, so `{{upstreams}}` can see them. `CADDY_INGRESS_NETWORKS` can name that network when the proxy should not watch every one.
 
 ## Checks
 
