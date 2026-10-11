@@ -1,5 +1,10 @@
 # Caddy
 
+> [!CAUTION]
+> **This extension was written by AI. It is not recommended to run it in production.**
+>
+> It has not been reviewed or audited by a person. It talks to Cloudflare, writes DNS records, and changes server container labels. A mistake can take a domain offline, leave stale records behind, or expose a server you did not mean to publish. Use it only on a panel you can afford to break.
+
 Calagopus Panel extension (`dev.minerpl.caddyproxy`) that publishes a server through [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy).
 
 A server owner opens the **Caddy** tab and adds either a subdomain of a domain an admin allowed, or a custom domain they already control. Allowed domains carry a public DNS record (an **A** address or a **CNAME** hostname). When Cloudflare is turned on for that domain, creating the subdomain writes the DNS record, and deleting the server deletes it.
