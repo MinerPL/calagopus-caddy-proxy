@@ -30,7 +30,7 @@ On a Panel checkout, put it at `backend-extensions/dev_minerpl_caddyproxy` (a sy
 panel-rs extensions apply --profile balanced
 ```
 
-On the `:heavy` image, download `dev_minerpl_caddyproxy.c7s.zip` from the [latest release](https://github.com/MinerPL/dev.minerpl.caddyproxy/releases/latest). The download is that file itself. Upload it in Admin → Extensions, or copy it into `./build/extensions` and restart. That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install. A push to `main` packs the archive and publishes it on the release for the version in `Cargo.toml`, replacing the file when that version already has a release.
+On the `:heavy` image, download `dev_minerpl_caddyproxy.c7s.zip` from the [latest release](https://github.com/MinerPL/calagopus-caddy-proxy/releases/latest). The download is that file itself. Upload it in Admin → Extensions, or copy it into `./build/extensions` and restart. That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install. A push to `main` packs the archive and publishes it on the release for the version in `Cargo.toml`, replacing the file when that version already has a release.
 
 To pack the same archive locally:
 
