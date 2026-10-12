@@ -75,8 +75,7 @@ pub async fn create_subdomain(
 ) -> Result<CreatedRoute, anyhow::Error> {
     ensure_capacity(state, server).await?;
 
-    let name = domain::normalize_subdomain_name(name).map_err(invalid)?;
-    let fqdn = domain::join_domain(&name, &allowed.domain).map_err(invalid)?;
+    let fqdn = domain::subdomain_fqdn(name, &allowed.domain).map_err(invalid)?;
     if db::domain_taken(db::pool(&state.database), &fqdn).await? {
         return Err(invalid("that domain is already in use"));
     }

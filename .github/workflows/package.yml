@@ -2,11 +2,13 @@ name: Package
 
 on:
   push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   package:
@@ -24,3 +26,19 @@ jobs:
           path: dist/dev_minerpl_caddyproxy.c7s.zip
           if-no-files-found: error
           archive: false
+
+      - name: Publish GitHub release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml)"
+          tag="v${version}"
+          notes="Upload \`dev_minerpl_caddyproxy.c7s.zip\` in Admin → Extensions. The file is the extension archive itself."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/dev_minerpl_caddyproxy.c7s.zip --clobber
+          else
+            gh release create "$tag" dist/dev_minerpl_caddyproxy.c7s.zip \
+              --title "$tag" \
+              --notes "$notes"
+          fi

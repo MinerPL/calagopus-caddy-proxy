@@ -72,7 +72,7 @@ pub fn normalize_record(record_type: &str, content: &str) -> Result<(String, Str
     }
 }
 
-/// Subdomain relative to an allowed domain: `play` or `mc.play`, never the apex.
+/// Subdomain relative to an allowed domain: `play` or `mc.play`.
 pub fn normalize_subdomain_name(input: &str) -> Result<String, String> {
     let value = input.trim().trim_end_matches('.').to_ascii_lowercase();
     if value.is_empty() {
@@ -89,6 +89,17 @@ pub fn normalize_subdomain_name(input: &str) -> Result<String, String> {
         return Err("that subdomain name is reserved".to_string());
     }
     Ok(value)
+}
+
+/// Full hostname for an allowed domain. A blank name is that domain itself.
+pub fn subdomain_fqdn(name: &str, parent: &str) -> Result<String, String> {
+    let parent = normalize_hostname(parent)
+        .ok_or_else(|| "that domain is not a valid hostname".to_string())?;
+    let value = name.trim().trim_end_matches('.').to_ascii_lowercase();
+    if value.is_empty() {
+        return Ok(parent);
+    }
+    join_domain(&normalize_subdomain_name(&value)?, &parent)
 }
 
 pub fn join_domain(name: &str, parent: &str) -> Result<String, String> {
@@ -148,6 +159,14 @@ mod tests {
         assert_eq!(
             join_domain("mc.play", "example.com").unwrap(),
             "mc.play.example.com"
+        );
+        assert_eq!(
+            subdomain_fqdn("", "Example.com.").unwrap(),
+            "example.com"
+        );
+        assert_eq!(
+            subdomain_fqdn("play", "example.com").unwrap(),
+            "play.example.com"
         );
         assert!(is_under_domain("play.example.com", "example.com"));
         assert!(is_under_domain("example.com", "example.com"));

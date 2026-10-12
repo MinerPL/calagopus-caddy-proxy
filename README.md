@@ -7,7 +7,7 @@
 
 Calagopus Panel extension (`dev.minerpl.caddyproxy`) that publishes a server through [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy).
 
-A server owner opens the **Caddy** tab and adds either a subdomain of a domain an admin allowed, or a custom domain they already control. Allowed domains carry a public DNS record (an **A** address or a **CNAME** hostname). When Cloudflare is turned on for that domain, creating the subdomain writes the DNS record, and deleting the server deletes it.
+A server owner opens the **Caddy** tab and adds either a domain an admin allowed, or a custom domain they already control. The subdomain is optional: leave it empty to publish the allowed domain itself, or enter a name such as `play` to publish `play.example.com`. Allowed domains carry a public DNS record (an **A** address or a **CNAME** hostname). When Cloudflare is turned on for that domain, creating it writes the DNS record, and deleting the server deletes it.
 
 Every domain on the server is written as container labels. One domain, or several that share a port, uses:
 
@@ -30,7 +30,7 @@ On a Panel checkout, put it at `backend-extensions/dev_minerpl_caddyproxy` (a sy
 panel-rs extensions apply --profile balanced
 ```
 
-On the `:heavy` image, download `dev_minerpl_caddyproxy.c7s.zip` from the latest successful **Package** workflow run (Actions, open the run, then Artifacts). The download is that file itself. Upload it in Admin → Extensions, or copy it into `./build/extensions` and restart. That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install. The workflow uploads the archive as an artifact and does not publish a release.
+On the `:heavy` image, download `dev_minerpl_caddyproxy.c7s.zip` from the [latest release](https://github.com/MinerPL/dev.minerpl.caddyproxy/releases/latest). The download is that file itself. Upload it in Admin → Extensions, or copy it into `./build/extensions` and restart. That archive is the extension source in the layout `panel-rs extensions export` writes. The panel compiles it on install. A push to `main` packs the archive and publishes it on the release for the version in `Cargo.toml`, replacing the file when that version already has a release.
 
 To pack the same archive locally:
 
@@ -81,7 +81,7 @@ Start it with `docker compose up -d` from the directory that holds this file. If
 
 Then, in the panel:
 
-1. Finish [Admin setup](#admin-setup): allowed domains, a public record on every node, and Cloudflare if you want subdomains created for you.
+1. Finish [Admin setup](#admin-setup): allowed domains, a public record on every node, and Cloudflare if you want the DNS record created for you.
 2. On the server, open **Caddy**, add the domain, and type the port the process listens on inside the container.
 3. Restart that server. Wings recreates the container with the new labels, and caddy-docker-proxy picks them up.
 
@@ -89,7 +89,7 @@ Open 80 and 443 through the host firewall to the Caddy container. The node's pub
 
 ## Updating
 
-Download the new artifact, which is `dev_minerpl_caddyproxy.c7s.zip` itself, and replace that file in `./build/extensions`, then rebuild. This is the same extension, so saved settings and existing domains stay. Do not add it as a second package, and do not leave two archives with that package name in the folder.
+Download `dev_minerpl_caddyproxy.c7s.zip` from the latest release and replace that file in `./build/extensions`, then rebuild. This is the same extension, so saved settings and existing domains stay. Do not add it as a second package, and do not leave two archives with that package name in the folder.
 
 This package replaces `dev.dawid.caddy`. Delete that older archive from `./build/extensions` before adding this one. Two archives for different package names compile as two extensions, and a second archive of the same package fails the build as already installed. If the old extension already ran, its tables (`dev_dawid_caddy_routes`, `dev_dawid_caddy_cleanup`) are left behind; this package uses its own tables. The `servers.caddy_domains` column is shared and is added only when it is missing.
 
@@ -103,17 +103,17 @@ panel-rs extensions export dev.minerpl.caddyproxy
 
 Open the extension configuration page.
 
-1. Add each domain users may create subdomains under.
+1. Add each domain users may publish. They can use that domain as-is, or add a subdomain under it.
 2. Under **Node points**, every node needs a public record. It starts as a **CNAME** to that node's own domain (its public URL, otherwise the panel URL). Change it to an **A** record and an IPv4 address when the node should be addressed directly.
 3. Optional: enable Cloudflare, paste the zone id and an API token with **Zone.DNS:Edit**, then test it. Proxied (orange-cloud) defaults to off so visitors reach Caddy directly.
-4. Custom domains are on by default. They only add labels. DNS stays with the user, and a name under an allowed domain has to be created as a subdomain.
+4. Custom domains are on by default. They only add labels. DNS stays with the user, and a name under an allowed domain has to be created from that allowed domain.
 5. New servers start with a domain limit of 1. Change the default here, or set **Caddy domains** on a server (0 disables the tab's create button).
 
-A saved public record is copied onto each subdomain when it is created. Editing the record later does not rewrite DNS that already exists. Remove the subdomain and add it again to point it somewhere else. An allowed domain that still has subdomains cannot be removed or renamed.
+A saved public record is copied onto each domain when it is created. Editing the record later does not rewrite DNS that already exists. Remove the domain and add it again to point it somewhere else. An allowed domain that still has names under it cannot be removed or renamed.
 
 ## What the server owner does
 
-On the server, open **Caddy** and add a domain. Pick an allowed domain and a name such as `play` or `mc.play`, or type a full custom hostname. Enter the container port.
+On the server, open **Caddy** and add a domain. Pick an allowed domain. Leave the subdomain empty to use that domain itself, or enter a name such as `play` or `mc.play`. A custom domain is the full hostname. Enter the container port.
 
 The page shows the labels that will be applied. Restart the server once they look right. Deleting a domain here also deletes its Cloudflare record. Deleting the server does the same: the route rows go with the server, and each Cloudflare record is deleted. If Cloudflare is down, the token is stored encrypted and a background task retries the delete about once a minute, backing off between attempts. That task runs on the primary Panel instance.
 

@@ -76,8 +76,10 @@ export default function RouteModal({
 
   const allowed = data.allowedDomains.find((entry) => entry.uuid === domainUuid) ?? null;
   const normalizedName = name.trim().toLowerCase().replace(/\.$/, '');
-  const nameValid = validSubdomain(normalizedName);
-  const preview = allowed && nameValid ? `${normalizedName}.${allowed.domain}` : '';
+  const nameBlank = normalizedName.length === 0;
+  const nameValid = nameBlank || validSubdomain(normalizedName);
+  const preview =
+    allowed && nameValid ? (nameBlank ? allowed.domain : `${normalizedName}.${allowed.domain}`) : '';
   const customValid = validHostname(domain);
   const parsedPort = portNumber(port);
   const portValid = Number.isInteger(parsedPort) && parsedPort >= 1 && parsedPort <= 65535;
@@ -97,7 +99,7 @@ export default function RouteModal({
         await createCaddyRoute(serverUuid, {
           kind: 'subdomain',
           domainUuid: domainUuid ?? undefined,
-          name: normalizedName,
+          name: nameBlank ? '' : normalizedName,
           port: parsedPort,
         });
         addToast(tExt('pages.server.toast.created', {}), 'success');
@@ -163,7 +165,6 @@ export default function RouteModal({
               allowDeselect={false}
             />
             <TextInput
-              withAsterisk
               label={tExt('pages.server.modal.name', {})}
               description={
                 preview

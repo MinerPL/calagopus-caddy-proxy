@@ -178,7 +178,7 @@ mod create {
         kind: String,
         #[garde(skip)]
         domain_uuid: Option<uuid::Uuid>,
-        /// Subdomain label, such as `play` or `mc.play`.
+        /// Subdomain label, such as `play` or `mc.play`. Empty uses the allowed domain itself.
         #[garde(length(chars, max = 253))]
         name: Option<String>,
         /// Full custom domain.
@@ -220,11 +220,7 @@ mod create {
                 let allowed = settings
                     .domain(domain_uuid)
                     .ok_or_else(|| ApiResponse::error("that domain is not allowed"))?;
-                let name = data
-                    .name
-                    .as_deref()
-                    .filter(|name| !name.trim().is_empty())
-                    .ok_or_else(|| ApiResponse::error("enter a subdomain name"))?;
+                let name = data.name.as_deref().unwrap_or("");
                 service::create_subdomain(&state, &server, &settings, allowed, name, port).await?
             }
             "custom" => {
